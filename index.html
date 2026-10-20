@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan Billing · Redmount</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --navy:#14233a; --navy-2:#1f3354; --ink:#1a2230; --muted:#5d6878; --line:#dde2ea; --line-2:#eef1f5;
+  --bg:#f5f7fa; --card:#fff; --accent:#2b6cb0; --accent-2:#e8f0fa; --good:#2f855a; --good-bg:#e6f4ec;
+  --warn:#b7791f; --warn-bg:#fdf4e3; --bad:#c53030; --bad-bg:#fbeaea; --violet:#6b46c1; --violet-bg:#efeafb;
+  --radius:8px; --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+
+/* top bar */
+header.top{background:var(--navy);color:#fff;display:flex;align-items:center;gap:20px;padding:0 20px;height:54px;position:sticky;top:0;z-index:20}
+header.top .brand{font-weight:600;letter-spacing:.02em;white-space:nowrap}
+header.top .brand small{display:block;font-weight:400;font-size:11px;opacity:.7;letter-spacing:.06em;text-transform:uppercase}
+header.top nav{display:flex;gap:2px;overflow-x:auto;flex:1}
+header.top nav a{color:#c8d3e3;padding:8px 12px;border-radius:6px;white-space:nowrap;font-size:13.5px}
+header.top nav a:hover{background:var(--navy-2);color:#fff;text-decoration:none}
+header.top nav a.active{background:var(--navy-2);color:#fff}
+header.top .who{font-size:12px;color:#c8d3e3;white-space:nowrap;display:flex;gap:10px;align-items:center}
+header.top .who a{color:#c8d3e3}
+.banner{background:var(--warn-bg);color:#744210;padding:8px 20px;font-size:13px;border-bottom:1px solid #f1dfb6}
+
+main{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+h1{font-size:21px;margin:0 0 4px;font-weight:600}
+h2{font-size:15px;margin:0 0 12px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.grid{display:grid;gap:12px 16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:18px;align-items:start}
+@media (max-width:980px){.split{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}main{padding:16px}}
+
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=number],select,textarea{
+  border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff;font-size:14px;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-2);border-color:var(--accent)}
+textarea{resize:vertical;min-height:60px}
+input.money,input.numr{text-align:right;font-variant-numeric:tabular-nums}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+
+.btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 13px;cursor:pointer;font-size:13.5px;white-space:nowrap}
+.btn:hover{border-color:#b9c3d1;background:#fafbfd}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#245a94}
+.btn.good{background:var(--good);border-color:var(--good);color:#fff}
+.btn.danger{color:var(--bad);border-color:#efc4c4}
+.btn.danger:hover{background:var(--bad-bg)}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn.link{border:none;background:none;color:var(--accent);padding:4px 6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{text-align:left;font-weight:600;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.t td{padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+table.t tr:hover td{background:#fafbfd}
+table.t .r{text-align:right;font-variant-numeric:tabular-nums}
+table.t tfoot td{font-weight:600;border-top:1px solid var(--line);border-bottom:none}
+.tablewrap{overflow-x:auto}
+table.edit td{padding:4px 6px}
+table.edit input{padding:5px 7px}
+
+.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600;text-transform:capitalize}
+.st-draft{background:#edf0f4;color:#4a5568}
+.st-reviewed{background:var(--violet-bg);color:var(--violet)}
+.st-approved{background:var(--accent-2);color:var(--accent)}
+.st-sent{background:var(--warn-bg);color:var(--warn)}
+.st-paid{background:var(--good-bg);color:var(--good)}
+.st-void{background:var(--bad-bg);color:var(--bad);text-decoration:line-through}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.mono{font-family:var(--mono);font-size:12.5px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+.stat .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.err{background:var(--bad-bg);color:var(--bad);padding:9px 12px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.ok{background:var(--good-bg);color:var(--good);padding:9px 12px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:8px;font-size:13.5px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.toast.bad{background:var(--bad)}
+.sectionlabel{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;margin:16px 0 8px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.previewbox{background:#e9edf2;border-radius:var(--radius);padding:16px;position:sticky;top:70px}
+.audit{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+/* login */
+.login{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:28px}
+.login h1{margin-bottom:6px}
+
+/* ---------- invoice document ---------- */
+.doc{background:#fff;color:#111;width:100%;max-width:8.5in;margin:0 auto;padding:.6in .65in;box-shadow:0 2px 12px rgba(20,35,58,.12);position:relative;font-size:12.5px;line-height:1.45}
+.doc .wm{position:absolute;top:38%;left:0;right:0;text-align:center;font-size:84px;font-weight:700;color:rgba(197,48,48,.08);transform:rotate(-24deg);pointer-events:none;letter-spacing:.08em}
+.doc .lh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:14px;margin-bottom:20px;gap:20px}
+.doc .lh .firm{font-size:19px;font-weight:700;color:var(--navy);letter-spacing:.01em}
+.doc .lh .firmaddr{white-space:pre-line;color:#444;font-size:11.5px;margin-top:4px}
+.doc .lh img{max-height:54px;max-width:220px;display:block;margin-bottom:6px}
+.doc .title{text-align:right}
+.doc .title .tt{font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--navy);text-transform:uppercase}
+.doc .title table{margin-left:auto;margin-top:6px;border-collapse:collapse;font-size:11.5px}
+.doc .title td{padding:1px 0 1px 12px}
+.doc .title td:first-child{color:#666;text-align:right}
+.doc .title td:last-child{font-weight:600;text-align:right}
+.doc .parties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.doc .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#777;font-weight:600;margin-bottom:4px}
+.doc .addr{white-space:pre-line}
+.doc table.dt{width:100%;border-collapse:collapse;margin-bottom:16px}
+.doc table.dt th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#555;border-bottom:1px solid #999;padding:5px 6px;font-weight:600}
+.doc table.dt td{padding:5px 6px;border-bottom:1px solid #e3e3e3;font-variant-numeric:tabular-nums}
+.doc table.dt .r{text-align:right}
+.doc table.dt tr.sub td{border-top:1px solid #999;font-weight:600}
+.doc table.dt tr.tot td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;font-size:14px;color:var(--navy);padding-top:8px}
+.doc .secthead{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy);font-weight:700;margin:6px 0 6px}
+.doc .basis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#f6f8fb;border:1px solid #e3e8ef;padding:10px 12px;border-radius:4px;margin-bottom:18px}
+.doc .basis .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#777}
+.doc .basis .v{font-weight:600}
+.doc .remit{border:1px solid #ccd5e1;border-radius:4px;padding:10px 12px;margin:14px 0;white-space:pre-line}
+.doc .disc{font-size:10.5px;color:#666;border-top:1px solid #ddd;padding-top:10px;margin-top:22px;white-space:pre-line}
+.doc .notes{white-space:pre-line;margin:10px 0}
+@media (max-width:700px){.doc{padding:22px 18px}.doc .basis{grid-template-columns:1fr 1fr}.doc .parties{grid-template-columns:1fr}.doc .lh{flex-direction:column}.doc .title{text-align:left}.doc .title table{margin-left:0}}
+
+@media print{
+  @page{size:letter;margin:0}
+  body{background:#fff}
+  header.top,.banner,.noprint,.toast{display:none!important}
+  main{padding:0;max-width:none}
+  .previewbox{background:none;padding:0;position:static}
+  .split{display:block}
+  .doc{box-shadow:none;max-width:none;width:8.5in;min-height:11in;page-break-after:always}
+  .doc:last-child{page-break-after:auto}
+  .printonly-container > *:not(.docstack){display:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   CONFIG — paste the same Supabase URL + anon key used by the other
+   Redmount tools (copy from risk-modeling/index.html). Leave as-is to run
+   in local test mode (data stays in this browser only).
+   ========================================================================= */
+const CONFIG = {
+  SUPABASE_URL: 'YOUR_SUPABASE_URL',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+  TERMINAL_URL: '../',              // link back to Redmount Terminal
+  INVOICE_PREFIX_LOCAL: 'RCP-'      // used only in local test mode
+};
+</script>
+
+<script>
+/* ==== BILLING CALC ENGINE (start) ==== */
+const BillingCalc = (() => {
+  const PERIODS = { monthly: 12, quarterly: 4, semiannual: 2, annual: 1 };
+  const DAY = 86400000;
+
+  const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  const num = v => {
+    if (v === null || v === undefined || v === '') return 0;
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[$,\s]/g, ''));
+    return isFinite(n) ? n : 0;
+  };
+  const parseDate = s => { const [y, m, d] = String(s).split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const daysInclusive = (a, b) => Math.round((parseDate(b) - parseDate(a)) / DAY) + 1;
+  const isLeap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+  // Annual asset-based fee from schedule
+  function assetFee(assets, s) {
+    const lines = [];
+    if (assets <= 0) return { annual: 0, lines };
+    const type = s.type || 'tiered';
+    if (type === 'flat_bps') {
+      const bps = num(s.flatBps);
+      lines.push({ label: `All assets @ ${fmtBps(bps)}`, base: assets, bps, annual: assets * bps / 10000 });
+    } else if (type === 'flat_fee') {
+      // no asset component
+    } else {
+      const tiers = (s.tiers || [])
+        .map(t => ({ upTo: (t.upTo === null || t.upTo === '' || t.upTo === undefined) ? Infinity : num(t.upTo), bps: num(t.bps) }))
+        .sort((a, b) => a.upTo - b.upTo);
+      if (!tiers.length) return { annual: 0, lines };
+      if (tiers[tiers.length - 1].upTo !== Infinity) tiers[tiers.length - 1].upTo = Infinity;
+      if (type === 'breakpoint') {
+        const t = tiers.find(t => assets <= t.upTo) || tiers[tiers.length - 1];
+        lines.push({ label: `All assets @ ${fmtBps(t.bps)} (breakpoint ${tierRangeLabel(tiers, tiers.indexOf(t))})`, base: assets, bps: t.bps, annual: assets * t.bps / 10000 });
+      } else { // tiered / graduated (marginal)
+        let lower = 0;
+        tiers.forEach((t, i) => {
+          if (assets <= lower) return;
+          const slice = Math.min(assets, t.upTo) - lower;
+          if (slice > 0) lines.push({ label: `${tierRangeLabel(tiers, i)} @ ${fmtBps(t.bps)}`, base: slice, bps: t.bps, annual: slice * t.bps / 10000 });
+          lower = t.upTo;
+        });
+      }
+    }
+    return { annual: lines.reduce((a, l) => a + l.annual, 0), lines };
+  }
+
+  function tierRangeLabel(tiers, i) {
+    const lo = i === 0 ? 0 : tiers[i - 1].upTo;
+    const hi = tiers[i].upTo;
+    const m = v => '$' + compact(v);
+    if (hi === Infinity) return `Over ${m(lo)}`;
+    if (lo === 0) return `First ${m(hi)}`;
+    return `${m(lo)} – ${m(hi)}`;
+  }
+  function compact(v) {
+    if (v >= 1e9 && v % 1e7 === 0) return (v / 1e9).toLocaleString('en-US', { maximumFractionDigits: 2 }) + 'B';
+    if (v >= 1e6 && v % 1e4 === 0) return (v / 1e6).toLocaleString('en-US', { maximumFractionDigits: 2 }) + 'M';
+    if (v >= 1e3 && v % 10 === 0) return (v / 1e3).toLocaleString('en-US', { maximumFractionDigits: 2 }) + 'K';
+    return v.toLocaleString('en-US');
+  }
+  function fmtBps(bps) { return `${(+bps).toLocaleString('en-US', { maximumFractionDigits: 3 })} bps`; }
+
+  // Fraction of a year this invoice covers
+  function periodFactor(plan, periodStart, periodEnd, serviceStart) {
+    const ppy = PERIODS[plan.frequency] || 4;
+    const fullDays = daysInclusive(periodStart, periodEnd);
+    let billedStart = periodStart;
+    if (serviceStart && parseDate(serviceStart) > parseDate(periodStart) && parseDate(serviceStart) <= parseDate(periodEnd)) billedStart = serviceStart;
+    const billedDays = daysInclusive(billedStart, periodEnd);
+    const method = plan.proration || 'periodic';
+    let factor, basis;
+    if (method === 'actual_365') {
+      factor = billedDays / 365; basis = `${billedDays} days / 365`;
+    } else if (method === 'actual_actual') {
+      const y = new Date(parseDate(periodEnd)).getUTCFullYear();
+      const yd = isLeap(y) ? 366 : 365;
+      factor = billedDays / yd; basis = `${billedDays} days / ${yd}`;
+    } else {
+      factor = 1 / ppy; basis = `1/${ppy} of annual`;
+      if (billedDays < fullDays) { factor *= billedDays / fullDays; basis += ` × ${billedDays}/${fullDays} days (partial period)`; }
+    }
+    return { factor, basis, billedDays, fullDays, billedStart, periodsPerYear: ppy };
+  }
+
+  function valuation(plan, inputs) {
+    const m = plan.valuation_method || 'period_end';
+    const vals = (inputs.values || []).map(v => ({ label: v.label || '', value: num(v.value) })).filter(v => v.value !== 0 || v.label);
+    let gross, desc;
+    if (m === 'average') {
+      const used = vals.filter(v => v.value !== 0);
+      gross = used.length ? used.reduce((a, v) => a + v.value, 0) / used.length : 0;
+      desc = `Average of ${used.length} valuation${used.length === 1 ? '' : 's'}`;
+    } else {
+      gross = vals.length ? vals[0].value : 0;
+      desc = { period_end: 'Period-end market value', period_start: 'Prior period-end market value', adb: 'Average daily balance' }[m] || 'Market value';
+    }
+    const exclusions = (inputs.exclusions || []).map(e => ({ label: e.label || 'Excluded assets', value: num(e.value) })).filter(e => e.value);
+    const excluded = exclusions.reduce((a, e) => a + e.value, 0);
+    return { method: m, desc, values: vals, gross, exclusions, excluded, billable: Math.max(0, gross - excluded) };
+  }
+
+  function calculate(plan, inputs) {
+    const s = plan.schedule || {};
+    const val = valuation(plan, inputs);
+    const pf = periodFactor(plan, inputs.periodStart, inputs.periodEnd, inputs.serviceStart);
+    const participants = Math.max(0, Math.round(num(inputs.participants)));
+
+    const af = assetFee(val.billable, s);
+    const lines = af.lines.map(l => ({ kind: 'asset', ...l, period: l.annual * pf.factor }));
+
+    const baseFee = num(s.baseFeeAnnual) + (s.type === 'flat_fee' ? num(s.flatAnnualFee) : 0);
+    if (baseFee) lines.push({ kind: 'fixed', label: s.type === 'flat_fee' && !num(s.baseFeeAnnual) ? 'Flat advisory fee' : 'Base / fixed fee', annual: baseFee, period: baseFee * pf.factor });
+    const ppAnnual = num(s.perParticipantAnnual);
+    if (ppAnnual && participants) lines.push({ kind: 'participant', label: `${participants} participants × $${ppAnnual.toFixed(2)}/yr`, annual: ppAnnual * participants, period: ppAnnual * participants * pf.factor });
+
+    const annualCalc = lines.reduce((a, l) => a + l.annual, 0);
+    let subtotal = lines.reduce((a, l) => a + l.period, 0);
+
+    let minMax = null;
+    const minA = num(s.minimumAnnual), maxA = num(s.maximumAnnual);
+    if (minA && annualCalc < minA) {
+      const target = minA * pf.factor;
+      minMax = { kind: 'minimum', label: `Annual minimum ($${fmtMoney(minA)}) adjustment`, amount: target - subtotal };
+      subtotal = target;
+    } else if (maxA && annualCalc > maxA) {
+      const target = maxA * pf.factor;
+      minMax = { kind: 'maximum', label: `Annual maximum ($${fmtMoney(maxA)}) adjustment`, amount: target - subtotal };
+      subtotal = target;
+    }
+
+    let discount = null;
+    const dPct = num(s.discountPct);
+    if (dPct) { discount = { label: `Discount (${dPct}%)`, amount: -subtotal * dPct / 100 }; subtotal += discount.amount; }
+
+    const adjustments = (inputs.adjustments || []).map(a => ({ label: a.label || 'Adjustment', amount: r2(num(a.amount)) })).filter(a => a.amount);
+    const feeBeforeAdj = r2(subtotal);
+    const total = r2(feeBeforeAdj + adjustments.reduce((a, x) => a + x.amount, 0));
+
+    const effectiveBps = val.billable > 0 ? (feeBeforeAdj / pf.factor) / val.billable * 10000 : null;
+
+    return {
+      version: 1,
+      valuation: val,
+      period: pf,
+      participants,
+      lines: lines.map(l => ({ ...l, annual: r2(l.annual), period: r2(l.period) })),
+      annualCalculated: r2(annualCalc),
+      minMax: minMax ? { ...minMax, amount: r2(minMax.amount) } : null,
+      discount: discount ? { ...discount, amount: r2(discount.amount) } : null,
+      feeBeforeAdjustments: feeBeforeAdj,
+      adjustments,
+      total,
+      effectiveBps: effectiveBps === null ? null : Math.round(effectiveBps * 100) / 100
+    };
+  }
+
+  function fmtMoney(n) { return (+n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  // Standard calendar periods
+  function periodsFor(frequency, year) {
+    const pad = n => String(n).padStart(2, '0');
+    const end = (y, m) => `${y}-${pad(m)}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+    const out = [];
+    if (frequency === 'monthly') for (let m = 1; m <= 12; m++) out.push({ label: new Date(Date.UTC(year, m - 1, 1)).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) + ' ' + year, start: `${year}-${pad(m)}-01`, end: end(year, m) });
+    else if (frequency === 'semiannual') { out.push({ label: `H1 ${year}`, start: `${year}-01-01`, end: `${year}-06-30` }); out.push({ label: `H2 ${year}`, start: `${year}-07-01`, end: `${year}-12-31` }); }
+    else if (frequency === 'annual') out.push({ label: `FY ${year}`, start: `${year}-01-01`, end: `${year}-12-31` });
+    else for (let q = 1; q <= 4; q++) out.push({ label: `Q${q} ${year}`, start: `${year}-${pad(q * 3 - 2)}-01`, end: end(year, q * 3) });
+    return out;
+  }
+
+  return { calculate, periodsFor, num, r2, fmtMoney, daysInclusive, PERIODS, tierRangeLabel };
+})();
+/* ==== BILLING CALC ENGINE (end) ==== */
+
+</script>
+
+<script>
+(() => {
+const C = BillingCalc;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => (n < 0 ? '-$' : '$') + Math.abs(+n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = n => (n < 0 ? '-$' : '$') + Math.abs(+n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const commas = n => (n === '' || n === null || n === undefined || isNaN(+n)) ? '' : (+n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + n)); return dt.toISOString().slice(0, 10); };
+const fmtDate = iso => { if (!iso) return ''; const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); };
+const fmtTs = ts => ts ? new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+const deep = o => JSON.parse(JSON.stringify(o));
+
+const LABELS = {
+  billing_method: { invoice_sponsor: 'Invoice plan sponsor', deduct_from_plan: 'Deduct from plan assets' },
+  frequency: { monthly: 'Monthly', quarterly: 'Quarterly', semiannual: 'Semi-annual', annual: 'Annual' },
+  timing: { arrears: 'In arrears', advance: 'In advance' },
+  valuation_method: { period_end: 'Period-end value', period_start: 'Prior period-end value', average: 'Average of valuations', adb: 'Average daily balance' },
+  proration: { periodic: 'Periodic (annual ÷ periods)', actual_365: 'Actual days / 365', actual_actual: 'Actual days / actual year' },
+  schedule: { tiered: 'Tiered (graduated / marginal)', breakpoint: 'Breakpoint (whole balance at one rate)', flat_bps: 'Flat rate (bps)', flat_fee: 'Flat dollar fee' }
+};
+const STATUSES = ['draft', 'reviewed', 'approved', 'sent', 'paid', 'void'];
+const chip = s => `<span class="chip st-${esc(s)}">${esc(s)}</span>`;
+const opts = (map, sel) => Object.entries(map).map(([k, v]) => `<option value="${esc(k)}"${k === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
+
+function toast(msg, bad) {
+  const t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), bad ? 5000 : 2600);
+}
+
+/* ---------- money input behaviour (comma-formatted text) ---------- */
+document.addEventListener('focusout', e => {
+  if (e.target.matches && e.target.matches('input.money')) {
+    const v = e.target.value.trim(); if (v === '') return;
+    const n = C.num(v); e.target.value = commas(n);
+  }
+});
+
+/* =========================================================================
+   DATA LAYER — Supabase, or localStorage in test mode
+   ========================================================================= */
+const LOCAL = !/^https?:\/\//.test(CONFIG.SUPABASE_URL) || CONFIG.SUPABASE_ANON_KEY.startsWith('YOUR_');
+let sb = null;
+if (!LOCAL) sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+const Local = {
+  key: 'redmount-plan-billing-local-v1',
+  load() {
+    try { const d = JSON.parse(localStorage.getItem(this.key)); if (d) return d; } catch (e) {}
+    return { plans: [], invoices: [], settings: null, seq: 1001 };
+  },
+  save(d) { try { localStorage.setItem(this.key, JSON.stringify(d)); } catch (e) { toast('Browser storage unavailable — local data not saved', true); } }
+};
+const DEFAULT_SETTINGS = {
+  firmName: 'Redmount Capital Partners', address: 'Newport Beach, CA', phone: '', email: '', logoUrl: '',
+  remit: 'Please remit payment by check or ACH. Contact us for wire instructions.',
+  disclosure: 'Fees are calculated in accordance with the Investment Advisory Agreement between Redmount Capital Partners and the Plan. Please review this statement and notify us of any discrepancy within 30 days of receipt.',
+  deductNote: 'This fee will be deducted from plan assets by the recordkeeper upon sponsor approval. No payment is required.'
+};
+
+function guard(old, patch) {
+  const locked = ['approved', 'sent', 'paid', 'void'];
+  if (locked.includes(old.status)) {
+    for (const k of ['amount', 'inputs', 'calc', 'plan_snapshot', 'period_start', 'period_end', 'plan_id'])
+      if (k in patch && JSON.stringify(patch[k]) !== JSON.stringify(old[k])) throw new Error(`Invoice ${old.invoice_number} is ${old.status}, figures are locked. Void and re-issue to change.`);
+  }
+  if (old.status === 'void' && patch.status && patch.status !== 'void') throw new Error('Void invoices cannot be reopened.');
+}
+
+const DB = {
+  user: null,
+  async plans() {
+    if (LOCAL) return Local.load().plans.sort((a, b) => a.name.localeCompare(b.name));
+    const { data, error } = await sb.from('billing_plans').select('*').order('name'); if (error) throw error; return data;
+  },
+  async savePlan(p) {
+    const row = deep(p); delete row.created_at; delete row.updated_at; delete row.created_by;
+    if (LOCAL) {
+      const d = Local.load();
+      if (d.plans.some(x => x.code.toLowerCase() === row.code.toLowerCase() && x.id !== row.id)) throw new Error(`Plan code "${row.code}" is already used.`);
+      const now = new Date().toISOString();
+      if (row.id) { const i = d.plans.findIndex(x => x.id === row.id); d.plans[i] = { ...d.plans[i], ...row, updated_at: now }; }
+      else { row.id = uid(); row.created_at = now; row.updated_at = now; d.plans.push(row); }
+      Local.save(d); return row;
+    }
+    if (!row.id) delete row.id;
+    const { data, error } = await sb.from('billing_plans').upsert(row).select().single(); if (error) throw error; return data;
+  },
+  async invoices() {
+    if (LOCAL) { const d = Local.load(); return d.invoices.map(i => ({ ...i, plan: d.plans.find(p => p.id === i.plan_id) || null })).sort((a, b) => (b.period_end + b.invoice_number).localeCompare(a.period_end + a.invoice_number)); }
+    const { data, error } = await sb.from('billing_invoices').select('*, plan:billing_plans(id,code,name,sponsor_name)').order('period_end', { ascending: false }).order('invoice_number', { ascending: false });
+    if (error) throw error; return data;
+  },
+  async invoice(id) {
+    if (LOCAL) { const d = Local.load(); const i = d.invoices.find(x => x.id === id); return i ? { ...i, plan: d.plans.find(p => p.id === i.plan_id) || null } : null; }
+    const { data, error } = await sb.from('billing_invoices').select('*, plan:billing_plans(*)').eq('id', id).maybeSingle(); if (error) throw error; return data;
+  },
+  async createInvoice(row) {
+    if (LOCAL) {
+      const d = Local.load();
+      if (d.invoices.some(x => x.plan_id === row.plan_id && x.period_start === row.period_start && x.period_end === row.period_end && x.status !== 'void')) throw new Error('This plan already has an invoice for that period. Void it first to re-issue.');
+      const now = new Date().toISOString();
+      const r = { ...deep(row), id: uid(), invoice_number: CONFIG.INVOICE_PREFIX_LOCAL + (d.seq++), status: 'draft', created_at: now, updated_at: now, created_by_email: DB.user?.email || 'local' };
+      d.invoices.push(r); Local.save(d); return r;
+    }
+    const { data, error } = await sb.from('billing_invoices').insert(row).select().single();
+    if (error) { if (error.code === '23505') throw new Error('This plan already has an invoice for that period. Void it first to re-issue.'); throw error; }
+    return data;
+  },
+  async updateInvoice(id, patch) {
+    if (LOCAL) {
+      const d = Local.load(); const i = d.invoices.findIndex(x => x.id === id); if (i < 0) throw new Error('Not found');
+      guard(d.invoices[i], patch);
+      d.invoices[i] = { ...d.invoices[i], ...deep(patch), updated_at: new Date().toISOString() }; Local.save(d); return d.invoices[i];
+    }
+    const { data, error } = await sb.from('billing_invoices').update(patch).eq('id', id).select().single(); if (error) throw error; return data;
+  },
+  async deleteInvoice(id) {
+    if (LOCAL) { const d = Local.load(); const inv = d.invoices.find(x => x.id === id); if (inv && inv.status !== 'draft') throw new Error('Only drafts can be deleted.'); d.invoices = d.invoices.filter(x => x.id !== id); Local.save(d); return; }
+    const { error } = await sb.from('billing_invoices').delete().eq('id', id); if (error) throw error;
+  },
+  async settings() {
+    if (LOCAL) return { ...DEFAULT_SETTINGS, ...(Local.load().settings || {}) };
+    const { data, error } = await sb.from('billing_settings').select('settings').eq('id', 'firm').maybeSingle(); if (error) throw error;
+    return { ...DEFAULT_SETTINGS, ...(data?.settings || {}) };
+  },
+  async saveSettings(s) {
+    if (LOCAL) { const d = Local.load(); d.settings = s; Local.save(d); return; }
+    const { error } = await sb.from('billing_settings').upsert({ id: 'firm', settings: s }); if (error) throw error;
+  }
+};
+
+/* =========================================================================
+   STATE + ROUTER
+   ========================================================================= */
+const S = { plans: [], invoices: [], settings: { ...DEFAULT_SETTINGS }, loaded: false };
+async function refresh() {
+  const [plans, invoices, settings] = await Promise.all([DB.plans(), DB.invoices(), DB.settings()]);
+  S.plans = plans; S.invoices = invoices; S.settings = settings; S.loaded = true;
+}
+const planById = id => S.plans.find(p => p.id === id);
+
+const routes = [
+  [/^#\/invoices$/, viewInvoices],
+  [/^#\/invoice\/([\w-]+)$/, viewInvoice],
+  [/^#\/new(?:\?(.*))?$/, viewNew],
+  [/^#\/edit\/([\w-]+)$/, id => viewNew(null, id)],
+  [/^#\/run$/, viewRun],
+  [/^#\/plans$/, viewPlans],
+  [/^#\/plan\/([\w-]+)$/, viewPlan],
+  [/^#\/settings$/, viewSettings]
+];
+async function route() {
+  const h = location.hash || '#/invoices';
+  if (!location.hash) history.replaceState(null, '', '#/invoices');
+  $$('header.top nav a').forEach(a => a.classList.toggle('active', h.startsWith(a.getAttribute('href').replace(/s$/, ''))));
+  for (const [re, fn] of routes) { const m = h.match(re); if (m) { try { await fn(...m.slice(1)); } catch (e) { console.error(e); main(`<div class="err">${esc(e.message || e)}</div>`); } window.scrollTo(0, 0); return; } }
+  location.hash = '#/invoices';
+}
+const main = html => { $('#main').innerHTML = html; };
+
+function shell() {
+  $('#app').innerHTML = `
+    <header class="top noprint">
+      <div class="brand">Redmount<small>Plan Billing</small></div>
+      <nav>
+        <a href="#/invoices">Invoices</a>
+        <a href="#/new">New invoice</a>
+        <a href="#/run">Billing run</a>
+        <a href="#/plans">Plans</a>
+        <a href="#/settings">Settings</a>
+      </nav>
+      <div class="who"><span>${esc(DB.user?.email || '')}</span><a href="${esc(CONFIG.TERMINAL_URL)}">Terminal</a>${LOCAL ? '' : '<a href="#" id="signout">Sign out</a>'}</div>
+    </header>
+    ${LOCAL ? '<div class="banner noprint"><b>Local test mode.</b> Supabase isn’t configured, so data is saved in this browser only. Set SUPABASE_URL and SUPABASE_ANON_KEY at the top of index.html to go live.</div>' : ''}
+    <main id="main"><div class="empty">Loading…</div></main>`;
+  const so = $('#signout'); if (so) so.onclick = async e => { e.preventDefault(); await sb.auth.signOut(); location.reload(); };
+}
+
+/* =========================================================================
+   INVOICE DOCUMENT
+   ========================================================================= */
+function renderDoc(inv, settings) {
+  const plan = inv.plan_snapshot || {};
+  const c = inv.calc || {};
+  const v = c.valuation || {}, pd = c.period || {};
+  const deduct = plan.billing_method === 'deduct_from_plan';
+  const title = deduct ? 'Fee Statement' : 'Invoice';
+  const wm = ['draft', 'reviewed'].includes(inv.status) ? 'DRAFT' : inv.status === 'void' ? 'VOID' : '';
+  const s = settings;
+  const firmContact = [s.address, [s.phone, s.email].filter(Boolean).join('  ·  ')].filter(Boolean).join('\n');
+  const sponsorBlock = [plan.sponsor_name, plan.contact_name ? 'Attn: ' + plan.contact_name : '', plan.contact_address].filter(Boolean).join('\n');
+
+  const valRows = (v.values || []).filter(x => x.value).map(x => `<tr><td>${esc(x.label || v.desc)}</td><td class="r">${money(x.value)}</td></tr>`).join('');
+  const exRows = (v.exclusions || []).map(x => `<tr><td>Less: ${esc(x.label)}</td><td class="r">(${money(x.value)})</td></tr>`).join('');
+  const avgRow = v.method === 'average' && (v.values || []).filter(x => x.value).length > 1 ? `<tr class="sub"><td>${esc(v.desc)}</td><td class="r">${money(v.gross)}</td></tr>` : '';
+
+  const feeRows = (c.lines || []).map(l => `<tr>
+      <td>${esc(l.label)}</td>
+      <td class="r">${l.base !== undefined ? money(l.base) : ''}</td>
+      <td class="r">${money(l.annual)}</td>
+      <td class="r">${money(l.period)}</td></tr>`).join('');
+  const extraRows = [c.minMax, c.discount].filter(Boolean).map(x => `<tr><td colspan="3">${esc(x.label)}</td><td class="r">${money(x.amount)}</td></tr>`).join('');
+  const adjRows = (c.adjustments || []).map(a => `<tr><td colspan="3">${esc(a.label)}</td><td class="r">${money(a.amount)}</td></tr>`).join('');
+
+  return `<div class="doc">
+    ${wm ? `<div class="wm">${wm}</div>` : ''}
+    <div class="lh">
+      <div>${s.logoUrl ? `<img src="${esc(s.logoUrl)}" alt="">` : ''}<div class="firm">${esc(s.firmName)}</div><div class="firmaddr">${esc(firmContact)}</div></div>
+      <div class="title"><div class="tt">${title}</div>
+        <table>
+          <tr><td>${title} #</td><td>${esc(inv.invoice_number || '— (assigned on save)')}</td></tr>
+          <tr><td>Date</td><td>${fmtDate(inv.invoice_date)}</td></tr>
+          <tr><td>Billing period</td><td>${esc(inv.period_label || '')}</td></tr>
+          ${!deduct && inv.due_date ? `<tr><td>Due date</td><td>${fmtDate(inv.due_date)}</td></tr>` : ''}
+        </table></div>
+    </div>
+    <div class="parties">
+      <div><div class="lbl">${deduct ? 'Plan sponsor' : 'Bill to'}</div><div class="addr">${esc(sponsorBlock)}</div></div>
+      <div><div class="lbl">Plan</div><div><b>${esc(plan.name || '')}</b>${plan.plan_number ? `<br>Plan No. ${esc(plan.plan_number)}` : ''}${plan.recordkeeper ? `<br>Recordkeeper: ${esc(plan.recordkeeper)}` : ''}</div></div>
+    </div>
+    <div class="basis">
+      <div><div class="k">Service period</div><div class="v">${fmtDate(pd.billedStart || inv.period_start)} – ${fmtDate(inv.period_end)}</div></div>
+      <div><div class="k">Frequency</div><div class="v">${esc(LABELS.frequency[plan.frequency] || '')}, ${esc((LABELS.timing[plan.timing] || '').toLowerCase())}</div></div>
+      <div><div class="k">Proration</div><div class="v">${esc(pd.basis || '')}</div></div>
+      <div><div class="k">Participants</div><div class="v">${c.participants ? c.participants.toLocaleString() : '—'}</div></div>
+    </div>
+    <div class="secthead">Billable assets</div>
+    <table class="dt"><tbody>${valRows}${avgRow}${exRows}
+      <tr class="sub"><td>Billable assets</td><td class="r">${money(v.billable)}</td></tr></tbody></table>
+    <div class="secthead">Fee calculation</div>
+    <table class="dt">
+      <thead><tr><th>Component</th><th class="r">Assets</th><th class="r">Annual</th><th class="r">This period</th></tr></thead>
+      <tbody>${feeRows || '<tr><td colspan="4" class="muted">No fee components</td></tr>'}${extraRows}
+        ${adjRows ? `<tr class="sub"><td colspan="3">Advisory fee</td><td class="r">${money(c.feeBeforeAdjustments)}</td></tr>${adjRows}` : ''}
+        <tr class="tot"><td colspan="3">${deduct ? 'Fee to be deducted from plan assets' : 'Total amount due'}</td><td class="r">${money(c.total)}</td></tr>
+      </tbody></table>
+    ${c.effectiveBps !== null && c.effectiveBps !== undefined ? `<div class="small" style="color:#666">Effective annual rate on billable assets: ${c.effectiveBps.toFixed(2)} bps (${(c.effectiveBps / 100).toFixed(4)}%)</div>` : ''}
+    ${inv.notes ? `<div class="notes"><div class="lbl" style="margin-top:12px">Notes</div>${esc(inv.notes)}</div>` : ''}
+    <div class="remit">${esc(deduct ? s.deductNote : s.remit)}</div>
+    <div class="disc">${esc(s.disclosure)}</div>
+  </div>`;
+}
+
+/* snapshot of plan terms stored on each invoice */
+function planSnapshot(p) {
+  const keys = ['id', 'code', 'name', 'sponsor_name', 'plan_number', 'recordkeeper', 'contact_name', 'contact_email', 'contact_address', 'billing_method', 'frequency', 'timing', 'valuation_method', 'proration', 'terms_days', 'schedule'];
+  const o = {}; keys.forEach(k => o[k] = deep(p[k] ?? null)); return o;
+}
+
+/* =========================================================================
+   VIEW: INVOICES LIST
+   ========================================================================= */
+let invFilter = { status: '', period: '', q: '' };
+async function viewInvoices() {
+  await refresh();
+  const periods = [...new Set(S.invoices.map(i => i.period_label).filter(Boolean))];
+  const draw = () => {
+    const q = invFilter.q.toLowerCase();
+    const list = S.invoices.filter(i =>
+      (!invFilter.status || i.status === invFilter.status) &&
+      (!invFilter.period || i.period_label === invFilter.period) &&
+      (!q || [i.invoice_number, i.plan?.name, i.plan?.sponsor_name, i.plan?.code].join(' ').toLowerCase().includes(q)));
+    const live = list.filter(i => i.status !== 'void');
+    const sum = st => live.filter(i => !st || st.includes(i.status)).reduce((a, i) => a + +i.amount, 0);
+    $('#invstats').innerHTML = `
+      <div class="stat"><div class="k">Billed (excl. void)</div><div class="v">${money(sum())}</div></div>
+      <div class="stat"><div class="k">Awaiting review / approval</div><div class="v">${money(sum(['draft', 'reviewed']))}</div></div>
+      <div class="stat"><div class="k">Approved / sent, unpaid</div><div class="v">${money(sum(['approved', 'sent']))}</div></div>
+      <div class="stat"><div class="k">Paid / collected</div><div class="v">${money(sum(['paid']))}</div></div>`;
+    $('#invbody').innerHTML = list.length ? list.map(i => `<tr>
+        <td><input type="checkbox" class="sel" value="${esc(i.id)}"></td>
+        <td><a href="#/invoice/${esc(i.id)}" class="mono">${esc(i.invoice_number)}</a></td>
+        <td><a href="#/invoice/${esc(i.id)}">${esc(i.plan?.name || '(plan removed)')}</a><div class="small muted">${esc(i.plan?.sponsor_name || '')}</div></td>
+        <td>${esc(i.period_label || '')}</td>
+        <td class="small">${esc(i.plan_snapshot?.billing_method === 'deduct_from_plan' ? 'Deduct' : 'Invoice')}</td>
+        <td class="r">${i.billable_assets !== null && i.billable_assets !== undefined ? money0(i.billable_assets) : ''}</td>
+        <td class="r"><b>${money(i.amount)}</b></td>
+        <td>${chip(i.status)}</td>
+        <td class="small muted">${fmtDate(i.invoice_date)}</td></tr>`).join('')
+      : `<tr><td colspan="9" class="empty">${S.invoices.length ? 'No invoices match these filters.' : 'No invoices yet. Start with a <a href="#/new">new invoice</a> or a <a href="#/run">billing run</a>.'}</td></tr>`;
+    $('#invfoot').innerHTML = list.length ? `<tr><td></td><td colspan="5">${list.length} invoice${list.length === 1 ? '' : 's'}${list.length !== live.length ? ` (${list.length - live.length} void, excluded from total)` : ''}</td><td class="r">${money(live.reduce((a, i) => a + +i.amount, 0))}</td><td colspan="2"></td></tr>` : '';
+    $('#selall').checked = false;
+    drawBulk();
+  };
+  const drawBulk = () => {
+    const n = $$('.sel:checked').length;
+    $('#bulk').classList.toggle('hidden', !n); $('#bulkn').textContent = `${n} selected`;
+  };
+  main(`
+    <div class="spread"><div><h1>Invoices</h1><p class="sub" style="margin:0">401(k) plan fee invoices and statements</p></div>
+      <div class="row"><button class="btn" id="csv">Export CSV</button><a class="btn" href="#/run">Billing run</a><a class="btn primary" href="#/new">New invoice</a></div></div>
+    <div class="grid g4" id="invstats" style="margin-bottom:16px"></div>
+    <div class="card" style="padding:12px 14px">
+      <div class="row">
+        <input type="text" id="fq" placeholder="Search plan, sponsor, invoice #" value="${esc(invFilter.q)}" style="max-width:280px">
+        <select id="fst" style="max-width:160px"><option value="">All statuses</option>${STATUSES.map(s => `<option${s === invFilter.status ? ' selected' : ''}>${s}</option>`).join('')}</select>
+        <select id="fpd" style="max-width:160px"><option value="">All periods</option>${periods.map(p => `<option${p === invFilter.period ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select>
+        <div id="bulk" class="row hidden" style="margin-left:auto"><span class="small muted" id="bulkn"></span>
+          <button class="btn sm" data-bulk="reviewed">Mark reviewed</button><button class="btn sm" data-bulk="approved">Approve</button>
+          <button class="btn sm" data-bulk="sent">Mark sent</button><button class="btn sm" data-bulk="paid">Mark paid</button><button class="btn sm" id="bulkprint">Print selected</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="tablewrap"><table class="t">
+      <thead><tr><th style="width:28px"><input type="checkbox" id="selall"></th><th>Invoice #</th><th>Plan</th><th>Period</th><th>Method</th><th class="r">Billable assets</th><th class="r">Amount</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody id="invbody"></tbody><tfoot id="invfoot"></tfoot></table></div></div>`);
+  $('#fq').oninput = e => { invFilter.q = e.target.value; draw(); };
+  $('#fst').onchange = e => { invFilter.status = e.target.value; draw(); };
+  $('#fpd').onchange = e => { invFilter.period = e.target.value; draw(); };
+  $('#selall').onchange = e => { $$('.sel').forEach(c => c.checked = e.target.checked); drawBulk(); };
+  $('#invbody').addEventListener('change', e => { if (e.target.classList.contains('sel')) drawBulk(); });
+  $$('[data-bulk]').forEach(b => b.onclick = async () => {
+    const ids = $$('.sel:checked').map(c => c.value); let ok = 0, skipped = 0;
+    for (const id of ids) { const inv = S.invoices.find(i => i.id === id); if (!canMove(inv.status, b.dataset.bulk)) { skipped++; continue; } try { await DB.updateInvoice(id, statusPatch(b.dataset.bulk)); ok++; } catch (e) { toast(e.message, true); } }
+    toast(`${ok} updated${skipped ? `, ${skipped} skipped (wrong stage)` : ''}`); await refresh(); draw();
+  });
+  $('#bulkprint').onclick = async () => {
+    const ids = $$('.sel:checked').map(c => c.value);
+    const docs = []; for (const id of ids) { const inv = await DB.invoice(id); if (inv) docs.push(renderDoc(inv, S.settings)); }
+    printDocs(docs);
+  };
+  $('#csv').onclick = () => {
+    const rows = [['Invoice #', 'Plan code', 'Plan', 'Sponsor', 'Period', 'Period start', 'Period end', 'Method', 'Billable assets', 'Participants', 'Amount', 'Status', 'Invoice date', 'Due date', 'Paid at']];
+    S.invoices.forEach(i => rows.push([i.invoice_number, i.plan?.code, i.plan?.name, i.plan?.sponsor_name, i.period_label, i.period_start, i.period_end, i.plan_snapshot?.billing_method, i.billable_assets, i.calc?.participants, i.amount, i.status, i.invoice_date, i.due_date, i.paid_at ? i.paid_at.slice(0, 10) : '']));
+    download(`plan-billing-${todayISO()}.csv`, rows.map(r => r.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(',')).join('\n'), 'text/csv');
+  };
+  draw();
+}
+
+function printDocs(docs) {
+  if (!docs.length) return;
+  const holder = document.createElement('div'); holder.className = 'docstack'; holder.innerHTML = docs.join('');
+  document.body.classList.add('printonly-container'); document.body.appendChild(holder);
+  const done = () => { holder.remove(); document.body.classList.remove('printonly-container'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(() => window.print(), 50);
+}
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* status workflow */
+const FLOW = { draft: ['reviewed', 'void'], reviewed: ['approved', 'draft', 'void'], approved: ['sent', 'paid', 'void'], sent: ['paid', 'void'], paid: [], void: [] };
+const canMove = (from, to) => (FLOW[from] || []).includes(to);
+function statusPatch(to) {
+  const now = new Date().toISOString(), who = DB.user?.email || 'local';
+  const p = { status: to };
+  if (to === 'reviewed') { p.reviewed_by_email = who; p.reviewed_at = now; }
+  if (to === 'approved') { p.approved_by_email = who; p.approved_at = now; }
+  if (to === 'sent') p.sent_at = now;
+  if (to === 'paid') p.paid_at = now;
+  if (to === 'void') p.voided_at = now;
+  if (to === 'draft') { p.reviewed_by_email = null; p.reviewed_at = null; }
+  return p;
+}
+
+/* =========================================================================
+   VIEW: SINGLE INVOICE
+   ========================================================================= */
+async function viewInvoice(id) {
+  if (!S.loaded) await refresh();
+  const inv = await DB.invoice(id);
+  if (!inv) return main('<div class="err">Invoice not found.</div>');
+  const acts = [];
+  if (canMove(inv.status, 'reviewed')) acts.push(`<button class="btn" data-to="reviewed">Mark reviewed</button>`);
+  if (canMove(inv.status, 'approved')) acts.push(`<button class="btn good" data-to="approved">Approve</button>`);
+  if (canMove(inv.status, 'sent')) acts.push(`<button class="btn" data-to="sent">Mark sent</button>`);
+  if (canMove(inv.status, 'paid')) acts.push(`<button class="btn good" data-to="paid">${inv.plan_snapshot?.billing_method === 'deduct_from_plan' ? 'Mark deducted / collected' : 'Mark paid'}</button>`);
+  if (inv.status === 'reviewed') acts.push(`<button class="btn" data-to="draft">Back to draft</button>`);
+  const selfApprove = inv.status === 'reviewed' && inv.reviewed_by_email && inv.reviewed_by_email === DB.user?.email;
+  main(`
+    <div class="spread noprint">
+      <div><a href="#/invoices" class="small">← Invoices</a><h1 style="margin-top:4px">${esc(inv.invoice_number)} ${chip(inv.status)}</h1>
+        <p class="sub" style="margin:0">${esc(inv.plan_snapshot?.name || '')} · ${esc(inv.period_label || '')} · <b>${money(inv.amount)}</b></p></div>
+      <div class="row">
+        ${['draft', 'reviewed'].includes(inv.status) ? `<a class="btn" href="#/edit/${esc(inv.id)}">Edit</a>` : ''}
+        <button class="btn" id="print">Print / Save PDF</button>
+        ${acts.join('')}
+        ${canMove(inv.status, 'void') ? `<button class="btn danger" data-to="void">Void</button>` : ''}
+        ${inv.status === 'draft' ? `<button class="btn danger" id="del">Delete</button>` : ''}
+      </div>
+    </div>
+    ${selfApprove ? `<div class="banner noprint" style="border-radius:6px;margin-bottom:12px">You reviewed this invoice. Consider having the other advisor approve it for separation of duties.</div>` : ''}
+    <div class="split" style="grid-template-columns:minmax(0,1fr) 260px">
+      <div class="previewbox">${renderDoc(inv, S.settings)}</div>
+      <div class="noprint">
+        <div class="card"><h2>Audit trail</h2><div class="audit">
+          Created ${fmtTs(inv.created_at)}${inv.created_by_email ? ` by ${esc(inv.created_by_email)}` : ''}<br>
+          ${inv.reviewed_at ? `Reviewed ${fmtTs(inv.reviewed_at)} by ${esc(inv.reviewed_by_email)}<br>` : ''}
+          ${inv.approved_at ? `Approved ${fmtTs(inv.approved_at)} by ${esc(inv.approved_by_email)}<br>` : ''}
+          ${inv.sent_at ? `Sent ${fmtTs(inv.sent_at)}<br>` : ''}
+          ${inv.paid_at ? `Paid ${fmtTs(inv.paid_at)}<br>` : ''}
+          ${inv.voided_at ? `Voided ${fmtTs(inv.voided_at)}<br>` : ''}
+          Last updated ${fmtTs(inv.updated_at)}</div></div>
+        <div class="card"><h2>Fee schedule used</h2><div class="small">${scheduleSummary(inv.plan_snapshot?.schedule || {})}</div>
+          <div class="hint">Snapshot taken when this invoice was calculated. Later schedule changes don't alter it.</div></div>
+        ${inv.plan_snapshot?.contact_email ? `<div class="card"><h2>Send to</h2><div class="small">${esc(inv.plan_snapshot.contact_name || '')}<br><a href="mailto:${esc(inv.plan_snapshot.contact_email)}?subject=${encodeURIComponent(`${inv.plan_snapshot.billing_method === 'deduct_from_plan' ? 'Fee Statement' : 'Invoice'} ${inv.invoice_number} – ${inv.plan_snapshot.name} – ${inv.period_label}`)}">${esc(inv.plan_snapshot.contact_email)}</a></div><div class="hint">Save as PDF, then attach.</div></div>` : ''}
+      </div>
+    </div>`);
+  $('#print').onclick = () => window.print();
+  $$('[data-to]').forEach(b => b.onclick = async () => {
+    const to = b.dataset.to;
+    if (to === 'void' && !confirm(`Void ${inv.invoice_number}? This can't be undone. You can then re-issue a corrected invoice for the same period.`)) return;
+    if (to === 'approved' && !confirm(`Approve ${inv.invoice_number} for ${money(inv.amount)}? Figures lock after approval.`)) return;
+    try { await DB.updateInvoice(inv.id, statusPatch(to)); toast(`Marked ${to}`); S.loaded = false; viewInvoice(inv.id); } catch (e) { toast(e.message, true); }
+  });
+  const del = $('#del'); if (del) del.onclick = async () => {
+    if (!confirm(`Delete draft ${inv.invoice_number}?`)) return;
+    try { await DB.deleteInvoice(inv.id); toast('Draft deleted'); location.hash = '#/invoices'; } catch (e) { toast(e.message, true); }
+  };
+}
+
+function scheduleSummary(s) {
+  const parts = [`<b>${esc(LABELS.schedule[s.type] || 'Tiered')}</b>`];
+  if (s.type === 'flat_bps') parts.push(`${C.num(s.flatBps)} bps on all assets`);
+  if (s.type === 'flat_fee') parts.push(`${money(s.flatAnnualFee)} per year`);
+  if ((s.type === 'tiered' || s.type === 'breakpoint' || !s.type) && s.tiers?.length) {
+    const t = s.tiers.map(x => ({ upTo: x.upTo === null || x.upTo === '' ? Infinity : C.num(x.upTo), bps: C.num(x.bps) })).sort((a, b) => a.upTo - b.upTo);
+    if (t.length) t[t.length - 1].upTo = Infinity;
+    parts.push(t.map((x, i) => `${esc(C.tierRangeLabel(t, i))}: ${x.bps} bps`).join('<br>'));
+  }
+  if (C.num(s.baseFeeAnnual)) parts.push(`Base fee ${money(s.baseFeeAnnual)}/yr`);
+  if (C.num(s.perParticipantAnnual)) parts.push(`${money(s.perParticipantAnnual)} per participant/yr`);
+  if (C.num(s.minimumAnnual)) parts.push(`Annual minimum ${money(s.minimumAnnual)}`);
+  if (C.num(s.maximumAnnual)) parts.push(`Annual maximum ${money(s.maximumAnnual)}`);
+  if (C.num(s.discountPct)) parts.push(`Discount ${C.num(s.discountPct)}%`);
+  return parts.join('<br>');
+}
+
+/* =========================================================================
+   VIEW: NEW / EDIT INVOICE
+   ========================================================================= */
+function defaultValueRows(plan, period) {
+  if (!plan) return [{ label: '', value: '' }];
+  const m = plan.valuation_method;
+  if (m === 'average') {
+    if (!period) return [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }];
+    // month-end dates in the period
+    const rows = []; let [y, mo] = period.start.split('-').map(Number);
+    const [ey, em] = period.end.split('-').map(Number);
+    while (y < ey || (y === ey && mo <= em)) { const d = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10); rows.push({ label: `Value as of ${fmtDate(d)}`, value: '' }); mo++; if (mo > 12) { mo = 1; y++; } if (rows.length > 12) break; }
+    return rows.length ? rows : [{ label: '', value: '' }];
+  }
+  if (m === 'period_start' && period) return [{ label: `Value as of ${fmtDate(addDays(period.start, -1))}`, value: '' }];
+  if (m === 'adb') return [{ label: 'Average daily balance (from recordkeeper)', value: '' }];
+  return [{ label: period ? `Value as of ${fmtDate(period.end)}` : 'Period-end value', value: '' }];
+}
+
+async function viewNew(query, editId) {
+  await refresh();
+  const params = new URLSearchParams(query || '');
+  let editing = null;
+  if (editId) { editing = await DB.invoice(editId); if (!editing) return main('<div class="err">Invoice not found.</div>'); if (!['draft', 'reviewed'].includes(editing.status)) return main(`<div class="err">${esc(editing.invoice_number)} is ${esc(editing.status)} and can't be edited. Void it and re-issue.</div>`); }
+  const active = S.plans.filter(p => p.active || p.id === editing?.plan_id);
+  if (!active.length) return main(`<h1>New invoice</h1><div class="card empty">Add a plan with its fee schedule first.<br><br><a class="btn primary" href="#/plan/new">Add plan</a></div>`);
+
+  const year = new Date().getFullYear();
+  const st = {
+    planId: editing?.plan_id || params.get('plan') || active[0].id,
+    year: editing ? +editing.period_end.slice(0, 4) : year,
+    periodIdx: null, custom: false,
+    periodStart: editing?.period_start || '', periodEnd: editing?.period_end || '', periodLabel: editing?.period_label || '',
+    invoiceDate: editing?.invoice_date || todayISO(),
+    serviceStart: editing?.inputs?.serviceStart || '',
+    values: editing?.inputs?.values ? deep(editing.inputs.values) : null,
+    exclusions: editing?.inputs?.exclusions ? deep(editing.inputs.exclusions) : [],
+    participants: editing?.inputs?.participants ?? '',
+    adjustments: editing?.inputs?.adjustments ? deep(editing.inputs.adjustments) : [],
+    notes: editing?.notes || ''
+  };
+  const plan = () => planById(st.planId);
+
+  function pickDefaultPeriod() {
+    const p = plan(); const per = C.periodsFor(p.frequency, st.year);
+    if (st.periodStart) { const i = per.findIndex(x => x.start === st.periodStart && x.end === st.periodEnd); if (i >= 0) { st.periodIdx = i; st.custom = false; } else st.custom = true; return; }
+    // arrears → most recently completed period; advance → current/next period
+    const t = todayISO(); let i;
+    if (p.timing === 'advance') { i = per.findIndex(x => x.end >= t); if (i < 0) i = per.length - 1; }
+    else { i = -1; per.forEach((x, k) => { if (x.end < t) i = k; }); if (i < 0) { st.year--; return pickDefaultPeriod(); } }
+    st.periodIdx = i; applyPeriod();
+  }
+  function applyPeriod() {
+    const per = C.periodsFor(plan().frequency, st.year)[st.periodIdx];
+    if (per) { st.periodStart = per.start; st.periodEnd = per.end; st.periodLabel = per.label; }
+  }
+  function prefillFromHistory() {
+    const prev = S.invoices.filter(i => i.plan_id === st.planId && i.status !== 'void' && i.id !== editing?.id).sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
+    if (prev) {
+      if (st.participants === '') st.participants = prev.inputs?.participants ?? '';
+      if (!st.exclusions.length && prev.inputs?.exclusions?.length) st.exclusions = prev.inputs.exclusions.map(e => ({ label: e.label, value: '' }));
+    }
+    return prev;
+  }
+  pickDefaultPeriod();
+  if (!st.values) st.values = defaultValueRows(plan(), { start: st.periodStart, end: st.periodEnd });
+  let prev = prefillFromHistory();
+
+  function draftInvoice() {
+    const p = plan();
+    const inputs = { periodStart: st.periodStart, periodEnd: st.periodEnd, serviceStart: st.serviceStart || null, values: st.values, exclusions: st.exclusions, participants: st.participants, adjustments: st.adjustments };
+    const ok = st.periodStart && st.periodEnd && st.periodEnd >= st.periodStart;
+    const calc = ok ? C.calculate(p, inputs) : null;
+    return {
+      ok, inputs, calc,
+      row: {
+        plan_id: p.id, period_label: st.periodLabel || `${fmtDate(st.periodStart)} – ${fmtDate(st.periodEnd)}`,
+        period_start: st.periodStart, period_end: st.periodEnd, invoice_date: st.invoiceDate,
+        due_date: p.billing_method === 'deduct_from_plan' ? null : addDays(st.invoiceDate, +p.terms_days || 30),
+        inputs: { ...inputs, values: st.values.map(v => ({ label: v.label, value: C.num(v.value) })), exclusions: st.exclusions.map(v => ({ label: v.label, value: C.num(v.value) })), participants: C.num(st.participants), adjustments: st.adjustments.map(a => ({ label: a.label, amount: C.num(a.amount) })) },
+        plan_snapshot: planSnapshot(p), calc, amount: calc?.total ?? 0, billable_assets: calc?.valuation.billable ?? 0, notes: st.notes || null
+      }
+    };
+  }
+
+  function rowsEditor(key, cols) {
+    return `<table class="edit" style="width:100%"><tbody>${st[key].map((r, i) => `<tr>
+        <td><input type="text" data-rk="${key}" data-i="${i}" data-f="label" value="${esc(r.label)}" placeholder="${esc(cols[0])}"></td>
+        <td style="width:42%"><input type="text" class="money" data-rk="${key}" data-i="${i}" data-f="${cols[2]}" value="${esc(commas(r[cols[2]]) || r[cols[2]] || '')}" placeholder="${esc(cols[1])}"></td>
+        <td style="width:30px"><button class="btn link" data-del="${key}" data-i="${i}" title="Remove">✕</button></td></tr>`).join('')}</tbody></table>`;
+  }
+
+  function draw() {
+    const p = plan();
+    const per = C.periodsFor(p.frequency, st.year);
+    const dupe = S.invoices.find(i => i.plan_id === p.id && i.period_start === st.periodStart && i.period_end === st.periodEnd && i.status !== 'void' && i.id !== editing?.id);
+    main(`
+      <div class="spread"><div><a href="${editing ? '#/invoice/' + esc(editing.id) : '#/invoices'}" class="small">← ${editing ? esc(editing.invoice_number) : 'Invoices'}</a>
+        <h1 style="margin-top:4px">${editing ? 'Edit ' + esc(editing.invoice_number) : 'New invoice'}</h1></div></div>
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="grid g2">
+              <label class="f">Plan<select id="plan">${active.map(x => `<option value="${esc(x.id)}"${x.id === p.id ? ' selected' : ''}${editing ? ' disabled' : ''}>${esc(x.name)} (${esc(x.code)})</option>`).join('')}</select></label>
+              <label class="f">Invoice date<input type="date" id="idate" value="${esc(st.invoiceDate)}"></label>
+            </div>
+            <div class="hint">${esc(LABELS.frequency[p.frequency])}, ${esc(LABELS.timing[p.timing].toLowerCase())} · ${esc(LABELS.valuation_method[p.valuation_method])} · ${esc(LABELS.billing_method[p.billing_method])} · <a href="#/plan/${esc(p.id)}">edit plan</a></div>
+            <div class="sectionlabel">Calculation period</div>
+            <div class="grid g3">
+              <label class="f">Year<input type="number" id="year" value="${st.year}" ${st.custom ? 'disabled' : ''}></label>
+              <label class="f">Period<select id="period">${per.map((x, i) => `<option value="${i}"${!st.custom && i === st.periodIdx ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}<option value="custom"${st.custom ? ' selected' : ''}>Custom dates…</option></select></label>
+              <label class="f">Service start (partial period)<input type="date" id="svc" value="${esc(st.serviceStart)}" min="${esc(st.periodStart)}" max="${esc(st.periodEnd)}"></label>
+            </div>
+            ${st.custom ? `<div class="grid g3" style="margin-top:10px">
+              <label class="f">Period start<input type="date" id="ps" value="${esc(st.periodStart)}"></label>
+              <label class="f">Period end<input type="date" id="pe" value="${esc(st.periodEnd)}"></label>
+              <label class="f">Period label<input type="text" id="pl" value="${esc(st.periodLabel)}" placeholder="e.g. Stub Q3 2026"></label></div>` : ''}
+            <div class="hint">Leave service start blank unless the plan came on mid-period; fee is then prorated by days.</div>
+            ${dupe ? `<div class="err" style="margin-top:10px">This plan already has ${esc(dupe.invoice_number)} (${esc(dupe.status)}) for this period. <a href="#/invoice/${esc(dupe.id)}">Open it</a>, or void it before re-issuing.</div>` : ''}
+          </div>
+          <div class="card">
+            <h2>Values</h2>
+            <div class="sectionlabel" style="margin-top:0">${esc(LABELS.valuation_method[p.valuation_method])}</div>
+            ${rowsEditor('values', ['Description / as-of date', 'Market value', 'value'])}
+            <button class="btn sm" data-add="values" style="margin-top:6px">+ Add valuation</button>
+            ${p.valuation_method === 'average' ? '<div class="hint">Blank rows are ignored in the average.</div>' : (st.values.length > 1 ? '<div class="hint">Only the first value is used for this valuation method.</div>' : '')}
+            <div class="sectionlabel">Excluded assets (not billable)</div>
+            ${st.exclusions.length ? rowsEditor('exclusions', ['e.g. Participant loans, SDBA, employer stock', 'Amount', 'value']) : '<div class="small muted">None</div>'}
+            <button class="btn sm" data-add="exclusions" style="margin-top:6px">+ Add exclusion</button>
+            <div class="grid g2" style="margin-top:14px">
+              <label class="f">Participants (for per-head fees)<input type="text" class="numr" id="pp" value="${esc(st.participants)}" inputmode="numeric"></label>
+            </div>
+            ${prev ? `<div class="hint">Last invoice: ${esc(prev.invoice_number)} · ${esc(prev.period_label)} · ${money0(prev.billable_assets)} billable · ${money(prev.amount)}</div>` : ''}
+          </div>
+          <div class="card">
+            <h2>Adjustments</h2>
+            ${st.adjustments.length ? rowsEditor('adjustments', ['e.g. Credit for prior-period overbilling', 'Amount (negative = credit)', 'amount']) : '<div class="small muted">None</div>'}
+            <button class="btn sm" data-add="adjustments" style="margin-top:6px">+ Add adjustment</button>
+            <label class="f" style="margin-top:14px">Notes on invoice<textarea id="notes" placeholder="Optional — prints on the invoice">${esc(st.notes)}</textarea></label>
+          </div>
+          <div class="row"><button class="btn primary" id="save">${editing ? 'Save changes' : 'Save as draft'}</button><span class="small muted" id="savehint"></span></div>
+        </div>
+        <div class="previewbox" id="preview"></div>
+      </div>`);
+    bind(); preview();
+  }
+
+  function preview() {
+    const d = draftInvoice();
+    if (!d.ok) { $('#preview').innerHTML = '<div class="empty">Set a valid period to preview.</div>'; return; }
+    $('#preview').innerHTML = renderDoc({ ...d.row, invoice_number: editing?.invoice_number, status: 'draft' }, S.settings);
+  }
+
+  function bind() {
+    $('#plan').onchange = e => { st.planId = e.target.value; st.periodStart = ''; st.periodEnd = ''; st.custom = false; st.year = year; st.participants = ''; st.exclusions = []; pickDefaultPeriod(); st.values = defaultValueRows(plan(), { start: st.periodStart, end: st.periodEnd }); prev = prefillFromHistory(); draw(); };
+    $('#idate').onchange = e => { st.invoiceDate = e.target.value || todayISO(); preview(); };
+    $('#year').onchange = e => { st.year = +e.target.value || year; applyPeriod(); resetValueLabels(); draw(); };
+    $('#period').onchange = e => {
+      if (e.target.value === 'custom') { st.custom = true; st.periodLabel = ''; }
+      else { st.custom = false; st.periodIdx = +e.target.value; applyPeriod(); }
+      resetValueLabels(); draw();
+    };
+    $('#svc').onchange = e => { st.serviceStart = e.target.value; preview(); };
+    if ($('#ps')) {
+      $('#ps').onchange = e => { st.periodStart = e.target.value; preview(); };
+      $('#pe').onchange = e => { st.periodEnd = e.target.value; preview(); };
+      $('#pl').oninput = e => { st.periodLabel = e.target.value; preview(); };
+    }
+    $('#pp').oninput = e => { st.participants = e.target.value.replace(/[^\d]/g, ''); preview(); };
+    $('#notes').oninput = e => { st.notes = e.target.value; preview(); };
+    $$('[data-rk]').forEach(t => t.addEventListener('input', () => { st[t.dataset.rk][+t.dataset.i][t.dataset.f] = t.value; preview(); }));
+    $$('[data-add]').forEach(b => b.onclick = () => { const k = b.dataset.add; st[k].push(k === 'adjustments' ? { label: '', amount: '' } : { label: '', value: '' }); draw(); });
+    $$('[data-del]').forEach(b => b.onclick = () => { st[b.dataset.del].splice(+b.dataset.i, 1); if (b.dataset.del === 'values' && !st.values.length) st.values.push({ label: '', value: '' }); draw(); });
+    $('#save').onclick = save;
+  }
+
+  function resetValueLabels() {
+    // keep entered numbers when only labels change; regenerate labels for the new period
+    const fresh = defaultValueRows(plan(), { start: st.periodStart, end: st.periodEnd });
+    st.values = fresh.map((f, i) => ({ label: f.label, value: st.values[i]?.value ?? '' }));
+  }
+
+  async function save() {
+    const d = draftInvoice();
+    if (!d.ok) return toast('Set a valid period', true);
+    if (!d.calc.valuation.billable && !d.calc.total) return toast('Enter at least one value', true);
+    $('#save').disabled = true;
+    try {
+      let saved;
+      if (editing) {
+        const patch = { ...d.row }; delete patch.plan_id;
+        if (editing.status === 'reviewed') Object.assign(patch, statusPatch('draft'));
+        saved = await DB.updateInvoice(editing.id, patch);
+        toast(editing.status === 'reviewed' ? 'Saved — moved back to draft for re-review' : 'Saved');
+      } else { saved = await DB.createInvoice(d.row); toast(`Draft ${saved.invoice_number} created`); }
+      S.loaded = false; location.hash = '#/invoice/' + saved.id;
+    } catch (e) { toast(e.message || String(e), true); $('#save').disabled = false; }
+  }
+
+  draw();
+}
+
+/* =========================================================================
+   VIEW: BILLING RUN (all plans for a period at once)
+   ========================================================================= */
+async function viewRun() {
+  await refresh();
+  const year = new Date().getFullYear();
+  const st = { freq: 'quarterly', year, idx: null, invoiceDate: todayISO(), data: {} };
+  const t = todayISO();
+  const pickIdx = () => { const per = C.periodsFor(st.freq, st.year); let i = -1; per.forEach((x, k) => { if (x.end < t) i = k; }); if (i < 0) { st.year--; return pickIdx(); } st.idx = i; };
+  pickIdx();
+
+  const existingFor = (p, period) => S.invoices.find(i => i.plan_id === p.id && i.period_start === period.start && i.period_end === period.end && i.status !== 'void');
+  const nValsFor = (p, d) => p.valuation_method === 'average' ? d.values.length : 1;
+  function inputsFor(p, d, period) {
+    return { periodStart: period.start, periodEnd: period.end, serviceStart: null,
+      values: d.values.slice(0, nValsFor(p, d)).map(v => ({ label: v.label, value: C.num(v.value) })),
+      exclusions: C.num(d.excl) ? [{ label: d.exclLabel || 'Excluded assets', value: C.num(d.excl) }] : [],
+      participants: C.num(d.participants), adjustments: [] };
+  }
+
+  function recalc() {
+    const period = C.periodsFor(st.freq, st.year)[st.idx];
+    const plans = S.plans.filter(p => p.active && p.frequency === st.freq);
+    let total = 0, ready = 0;
+    plans.forEach(p => {
+      const cell = $(`[data-fee="${p.id}"]`); if (!cell) return;
+      const d = st.data[p.id];
+      const calc = C.calculate(p, inputsFor(p, d, period));
+      const has = calc.valuation.billable > 0;
+      if (has && d.include) { total += calc.total; ready++; }
+      cell.innerHTML = has ? `<b>${money(calc.total)}</b>${calc.effectiveBps ? `<div class="small muted">${calc.effectiveBps.toFixed(1)} bps</div>` : ''}` : '<span class="muted">—</span>';
+    });
+    const f = $('#runfoot'); if (f) f.innerHTML = `<td></td><td colspan="4">${ready} ready to create</td><td class="r">${money(total)}</td>`;
+    const cr = $('#create'); if (cr) { cr.disabled = !ready; cr.textContent = `Create ${ready} draft${ready === 1 ? '' : 's'}`; }
+  }
+
+  function draw() {
+    const per = C.periodsFor(st.freq, st.year);
+    const period = per[st.idx];
+    const plans = S.plans.filter(p => p.active && p.frequency === st.freq);
+    const rows = plans.map(p => {
+      const existing = existingFor(p, period);
+      const d = st.data[p.id] || (st.data[p.id] = initRow(p, period));
+      const nVals = nValsFor(p, d);
+      return `<tr>
+        <td>${existing ? '' : `<input type="checkbox" data-inc="${esc(p.id)}" ${d.include ? 'checked' : ''}>`}</td>
+        <td><b>${esc(p.name)}</b><div class="small muted">${esc(p.code)} · ${esc(LABELS.valuation_method[p.valuation_method])}${p.timing === 'advance' ? ' · advance' : ''}</div></td>
+        ${existing ? `<td colspan="4" class="small">Already invoiced: <a href="#/invoice/${esc(existing.id)}">${esc(existing.invoice_number)}</a> ${chip(existing.status)} ${money(existing.amount)}</td>` : `
+        <td><div class="row" style="gap:4px;flex-wrap:nowrap">${d.values.slice(0, nVals).map((v, i) => `<input type="text" class="money" style="min-width:110px" data-pid="${esc(p.id)}" data-vi="${i}" value="${esc(v.value)}" placeholder="${esc(nVals > 1 ? v.label.replace('Value as of ', '') : 'Value')}">`).join('')}</div></td>
+        <td><input type="text" class="money" style="min-width:100px" data-pid="${esc(p.id)}" data-f="excl" value="${esc(d.excl)}" placeholder="0"></td>
+        <td><input type="text" class="numr" style="width:80px" data-pid="${esc(p.id)}" data-f="participants" value="${esc(d.participants)}"></td>
+        <td class="r" data-fee="${esc(p.id)}"></td>`}
+      </tr>`;
+    }).join('');
+    main(`
+      <div class="spread"><div><h1>Billing run</h1><p class="sub" style="margin:0">Enter values for every plan on the same schedule, review the fees, and create all drafts at once.</p></div></div>
+      <div class="card"><div class="grid g4">
+        <label class="f">Frequency<select id="rf">${opts(LABELS.frequency, st.freq)}</select></label>
+        <label class="f">Year<input type="number" id="ry" value="${st.year}"></label>
+        <label class="f">Period<select id="rp">${per.map((x, i) => `<option value="${i}"${i === st.idx ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</select></label>
+        <label class="f">Invoice date<input type="date" id="rd" value="${esc(st.invoiceDate)}"></label></div>
+        <details style="margin-top:12px"><summary class="small" style="cursor:pointer">Paste values from a spreadsheet</summary>
+          <div class="hint">One plan per line: <span class="mono">PLANCODE, value, excluded, participants</span>. Average-valuation plans take one value per month-end before the excluded column. Copy straight from Excel (tab-separated) or type with ", " between columns.</div>
+          <textarea id="paste" rows="4" style="margin-top:6px;font-family:var(--mono);font-size:12.5px" placeholder="ACME401K, 7,512,330, 120,000, 148"></textarea>
+          <button class="btn sm" id="applypaste" style="margin-top:6px">Apply</button></details>
+      </div>
+      ${plans.length ? `<div class="card" style="padding:0"><div class="tablewrap"><table class="t">
+        <thead><tr><th style="width:28px"><input type="checkbox" id="incall" checked></th><th>Plan</th><th>Value(s)</th><th>Excluded</th><th>Participants</th><th class="r">Fee</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr id="runfoot"></tr></tfoot></table></div></div>
+        <div class="row"><button class="btn primary" id="create" disabled>Create drafts</button><span class="hint">Plans without a value are skipped. Each draft still goes through review → approve.</span></div>`
+        : `<div class="card empty">No active ${esc(LABELS.frequency[st.freq].toLowerCase())} plans. <a href="#/plans">Manage plans</a></div>`}`);
+
+    $('#rf').onchange = e => { st.freq = e.target.value; st.year = year; st.data = {}; pickIdx(); draw(); };
+    $('#ry').onchange = e => { st.year = +e.target.value || year; st.idx = Math.min(st.idx, C.periodsFor(st.freq, st.year).length - 1); st.data = {}; draw(); };
+    $('#rp').onchange = e => { st.idx = +e.target.value; st.data = {}; draw(); };
+    $('#rd').onchange = e => { st.invoiceDate = e.target.value || todayISO(); };
+    $$('input[data-pid]').forEach(el => el.addEventListener('input', () => {
+      const d = st.data[el.dataset.pid];
+      if (el.dataset.vi !== undefined) d.values[+el.dataset.vi].value = el.value;
+      else d[el.dataset.f] = el.dataset.f === 'participants' ? el.value.replace(/[^\d]/g, '') : el.value;
+      recalc();
+    }));
+    $$('[data-inc]').forEach(el => el.onchange = () => { st.data[el.dataset.inc].include = el.checked; recalc(); });
+    const ia = $('#incall'); if (ia) ia.onchange = () => { Object.values(st.data).forEach(d => d.include = ia.checked); $$('[data-inc]').forEach(c => c.checked = ia.checked); recalc(); };
+    $('#applypaste').onclick = () => {
+      let n = 0; const miss = [];
+      $('#paste').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+        const cells = line.includes('\t') ? line.split('\t') : (/,\s/.test(line) ? line.split(/,\s+/) : line.split(','));
+        const code = (cells[0] || '').trim();
+        const p = plans.find(x => x.code.toLowerCase() === code.toLowerCase());
+        if (!p || existingFor(p, period)) { if (code) miss.push(code); return; }
+        const d = st.data[p.id]; const nVals = nValsFor(p, d);
+        const rest = cells.slice(1).map(c => c.trim());
+        for (let i = 0; i < nVals; i++) if (rest[i]) d.values[i].value = commas(C.num(rest[i]));
+        if (rest[nVals]) d.excl = commas(C.num(rest[nVals]));
+        if (rest[nVals + 1]) d.participants = String(Math.round(C.num(rest[nVals + 1])));
+        n++;
+      });
+      draw(); toast(`${n} plan${n === 1 ? '' : 's'} filled${miss.length ? ` · skipped: ${miss.join(', ')}` : ''}`, !!miss.length && !n);
+    };
+    const cr = $('#create'); if (cr) cr.onclick = async () => {
+      cr.disabled = true; let made = 0;
+      for (const p of plans) {
+        const d = st.data[p.id]; if (!d.include || existingFor(p, period)) continue;
+        const inputs = inputsFor(p, d, period);
+        const calc = C.calculate(p, inputs); if (!(calc.valuation.billable > 0)) continue;
+        try {
+          await DB.createInvoice({ plan_id: p.id, period_label: period.label, period_start: period.start, period_end: period.end, invoice_date: st.invoiceDate, due_date: p.billing_method === 'deduct_from_plan' ? null : addDays(st.invoiceDate, +p.terms_days || 30), inputs, plan_snapshot: planSnapshot(p), calc, amount: calc.total, billable_assets: calc.valuation.billable, notes: null });
+          made++;
+        } catch (e) { toast(`${p.code}: ${e.message}`, true); }
+      }
+      toast(`${made} draft${made === 1 ? '' : 's'} created for ${period.label}`); invFilter = { status: '', period: period.label, q: '' }; location.hash = '#/invoices';
+    };
+    recalc();
+  }
+  function initRow(p, period) {
+    const prev = S.invoices.filter(i => i.plan_id === p.id && i.status !== 'void').sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
+    const ex = prev?.inputs?.exclusions?.[0];
+    return { include: true, values: defaultValueRows(p, period).map(v => ({ ...v })), excl: '', exclLabel: ex?.label || '', participants: prev?.inputs?.participants ? String(prev.inputs.participants) : '' };
+  }
+  draw();
+}
+
+/* =========================================================================
+   VIEW: PLANS
+   ========================================================================= */
+async function viewPlans() {
+  await refresh();
+  const last = id => S.invoices.filter(i => i.plan_id === id && i.status !== 'void').sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
+  main(`
+    <div class="spread"><div><h1>Plans</h1><p class="sub" style="margin:0">401(k) plans billed by Redmount, with their fee schedules and billing terms</p></div>
+      <div class="row"><a class="btn primary" href="#/plan/new">Add plan</a></div></div>
+    <div class="card" style="padding:0"><div class="tablewrap"><table class="t">
+      <thead><tr><th>Plan</th><th>Sponsor</th><th>Schedule</th><th>Billing</th><th class="r">Last billed assets</th><th class="r">Last fee</th><th></th></tr></thead>
+      <tbody>${S.plans.length ? S.plans.map(p => { const l = last(p.id); return `<tr${p.active ? '' : ' style="opacity:.55"'}>
+        <td><a href="#/plan/${esc(p.id)}"><b>${esc(p.name)}</b></a><div class="small muted mono">${esc(p.code)}${p.active ? '' : ' · inactive'}</div></td>
+        <td>${esc(p.sponsor_name)}</td>
+        <td class="small">${esc(LABELS.schedule[p.schedule?.type] || '—')}</td>
+        <td class="small">${esc(LABELS.frequency[p.frequency])}, ${esc(LABELS.timing[p.timing].toLowerCase())}<br><span class="muted">${esc(LABELS.billing_method[p.billing_method])}</span></td>
+        <td class="r">${l ? money0(l.billable_assets) : '—'}</td>
+        <td class="r">${l ? money(l.amount) + `<div class="small muted">${esc(l.period_label)}</div>` : '—'}</td>
+        <td class="r">${p.active ? `<a class="btn sm" href="#/new?plan=${esc(p.id)}">Invoice</a>` : ''}</td></tr>`; }).join('')
+      : '<tr><td colspan="7" class="empty">No plans yet. Add your first plan and its fee schedule.</td></tr>'}</tbody></table></div></div>`);
+}
+
+const BLANK_PLAN = () => ({
+  code: '', name: '', sponsor_name: '', plan_number: '', recordkeeper: '', contact_name: '', contact_email: '', contact_address: '',
+  billing_method: 'invoice_sponsor', frequency: 'quarterly', timing: 'arrears', valuation_method: 'period_end', proration: 'periodic', terms_days: 30,
+  schedule: { type: 'tiered', tiers: [{ upTo: 1000000, bps: 50 }, { upTo: 5000000, bps: 35 }, { upTo: null, bps: 25 }], baseFeeAnnual: '', perParticipantAnnual: '', minimumAnnual: '', maximumAnnual: '', discountPct: '' },
+  active: true, notes: ''
+});
+
+async function viewPlan(id) {
+  if (!S.loaded) await refresh();
+  const isNew = id === 'new';
+  const src = isNew ? null : planById(id);
+  if (!isNew && !src) return main('<div class="err">Plan not found.</div>');
+  const p = isNew ? BLANK_PLAN() : deep(src);
+  p.schedule = { type: 'tiered', tiers: [], ...(p.schedule || {}) };
+  let sample = 5000000, sampleP = 100;
+
+  function draw() {
+    const s = p.schedule;
+    main(`
+      <div class="spread"><div><a href="#/plans" class="small">← Plans</a><h1 style="margin-top:4px">${isNew ? 'Add plan' : esc(p.name)}</h1></div>
+        <div class="row">${!isNew ? `<a class="btn" href="#/new?plan=${esc(p.id)}">New invoice</a>` : ''}<button class="btn primary" id="savep">Save plan</button></div></div>
+      <div class="split">
+        <div>
+          <div class="card"><h2>Plan & sponsor</h2>
+            <div class="grid g2">
+              <label class="f">Plan name *<input type="text" data-p="name" value="${esc(p.name)}" placeholder="Acme Corp 401(k) Plan"></label>
+              <label class="f">Plan code * (short, unique)<input type="text" data-p="code" value="${esc(p.code)}" placeholder="ACME401K" style="text-transform:uppercase"></label>
+              <label class="f">Plan sponsor *<input type="text" data-p="sponsor_name" value="${esc(p.sponsor_name)}" placeholder="Acme Corporation"></label>
+              <label class="f">Plan number<input type="text" data-p="plan_number" value="${esc(p.plan_number)}" placeholder="001"></label>
+              <label class="f">Recordkeeper<input type="text" data-p="recordkeeper" value="${esc(p.recordkeeper)}"></label>
+              <label class="f">Contact name<input type="text" data-p="contact_name" value="${esc(p.contact_name)}"></label>
+              <label class="f">Contact email<input type="email" data-p="contact_email" value="${esc(p.contact_email)}"></label>
+              <label class="f" style="grid-column:1/-1">Billing address<textarea data-p="contact_address" rows="2">${esc(p.contact_address)}</textarea></label>
+            </div></div>
+          <div class="card"><h2>Billing terms</h2>
+            <div class="grid g2">
+              <label class="f">Billing method<select data-p="billing_method">${opts(LABELS.billing_method, p.billing_method)}</select></label>
+              <label class="f">Frequency<select data-p="frequency">${opts(LABELS.frequency, p.frequency)}</select></label>
+              <label class="f">Timing<select data-p="timing">${opts(LABELS.timing, p.timing)}</select></label>
+              <label class="f">Asset valuation<select data-p="valuation_method">${opts(LABELS.valuation_method, p.valuation_method)}</select></label>
+              <label class="f">Proration<select data-p="proration">${opts(LABELS.proration, p.proration)}</select></label>
+              <label class="f">Payment terms (days)<input type="number" data-p="terms_days" value="${esc(p.terms_days)}" min="0"></label>
+            </div>
+            <div class="hint">Advance billing usually pairs with "Prior period-end value". "Deduct from plan assets" produces a fee statement for sponsor approval instead of a payable invoice.</div></div>
+          <div class="card"><h2>Fee schedule</h2>
+            <label class="f" style="max-width:360px">Schedule type<select id="stype">${opts(LABELS.schedule, s.type)}</select></label>
+            ${s.type === 'tiered' || s.type === 'breakpoint' ? `
+              <div class="sectionlabel">Tiers (annual rate)</div>
+              <table class="edit" style="width:100%"><thead><tr><th class="small muted" style="text-align:left">Assets up to</th><th class="small muted" style="text-align:left">Annual bps</th><th></th></tr></thead><tbody>
+              ${(s.tiers || []).map((t, i, a) => `<tr>
+                <td>${i === a.length - 1 ? '<input type="text" disabled value="and above">' : `<input type="text" class="money" data-t="${i}" data-tf="upTo" value="${esc(commas(t.upTo))}">`}</td>
+                <td><input type="text" class="numr" data-t="${i}" data-tf="bps" value="${esc(t.bps)}"></td>
+                <td style="width:30px"><button class="btn link" data-deltier="${i}">✕</button></td></tr>`).join('')}
+              </tbody></table>
+              <button class="btn sm" id="addtier" style="margin-top:6px">+ Add tier</button>
+              <div class="hint">${s.type === 'tiered' ? 'Each rate applies only to the assets within its band (graduated).' : 'The whole balance is billed at the rate of the band it falls in.'} 100 bps = 1.00%.</div>` : ''}
+            ${s.type === 'flat_bps' ? `<label class="f" style="max-width:200px;margin-top:12px">Annual rate (bps)<input type="text" class="numr" data-s="flatBps" value="${esc(s.flatBps ?? '')}"></label>` : ''}
+            ${s.type === 'flat_fee' ? `<label class="f" style="max-width:240px;margin-top:12px">Annual flat fee ($)<input type="text" class="money" data-s="flatAnnualFee" value="${esc(commas(s.flatAnnualFee))}"></label>` : ''}
+            <div class="sectionlabel">Additional terms (annual amounts, optional)</div>
+            <div class="grid g3">
+              <label class="f">Base fee ($/yr)<input type="text" class="money" data-s="baseFeeAnnual" value="${esc(commas(s.baseFeeAnnual))}"></label>
+              <label class="f">Per participant ($/yr)<input type="text" class="money" data-s="perParticipantAnnual" value="${esc(commas(s.perParticipantAnnual))}"></label>
+              <label class="f">Discount (%)<input type="text" class="numr" data-s="discountPct" value="${esc(s.discountPct ?? '')}"></label>
+              <label class="f">Annual minimum ($)<input type="text" class="money" data-s="minimumAnnual" value="${esc(commas(s.minimumAnnual))}"></label>
+              <label class="f">Annual maximum ($)<input type="text" class="money" data-s="maximumAnnual" value="${esc(commas(s.maximumAnnual))}"></label>
+            </div>
+            <div class="hint">Minimum/maximum are annual and prorate to each period, applied before discount and adjustments.</div></div>
+          <div class="card"><h2>Status & notes</h2>
+            <label class="check"><input type="checkbox" data-p="active" ${p.active ? 'checked' : ''}> Active (included in billing runs)</label>
+            <label class="f" style="margin-top:10px">Internal notes<textarea data-p="notes" rows="2">${esc(p.notes)}</textarea></label></div>
+        </div>
+        <div><div class="card" style="position:sticky;top:70px"><h2>Fee check</h2>
+          <div class="grid g2"><label class="f">Sample assets<input type="text" class="money" id="sa" value="${esc(commas(sample))}"></label>
+            <label class="f">Participants<input type="text" class="numr" id="sp" value="${esc(sampleP)}"></label></div>
+          <div id="feecheck" style="margin-top:12px"></div></div></div>
+      </div>`);
+    bind(); feeCheck();
+  }
+  function feeCheck() {
+    const ppy = C.PERIODS[p.frequency] || 4;
+    const yr = new Date().getFullYear();
+    const per = C.periodsFor(p.frequency, yr)[0];
+    const r = C.calculate({ ...p, proration: 'periodic' }, { periodStart: per.start, periodEnd: per.end, values: [{ value: sample }], participants: sampleP });
+    $('#feecheck').innerHTML = `<table class="t"><tbody>
+      ${r.lines.map(l => `<tr><td class="small">${esc(l.label)}</td><td class="r">${money(l.annual)}</td></tr>`).join('')}
+      ${r.minMax ? `<tr><td class="small">${esc(r.minMax.label)}</td><td class="r">${money(r.minMax.amount * ppy)}</td></tr>` : ''}
+      ${r.discount ? `<tr><td class="small">${esc(r.discount.label)}</td><td class="r">${money(r.discount.amount * ppy)}</td></tr>` : ''}
+      </tbody><tfoot><tr><td>Annual fee</td><td class="r">${money(r.feeBeforeAdjustments * ppy)}</td></tr>
+      <tr><td>Per ${({ monthly: 'month', quarterly: 'quarter', semiannual: 'half-year', annual: 'year' })[p.frequency]}</td><td class="r">${money(r.feeBeforeAdjustments)}</td></tr>
+      <tr><td>Effective rate</td><td class="r">${r.effectiveBps !== null ? r.effectiveBps.toFixed(2) + ' bps' : '—'}</td></tr></tfoot></table>
+      <div class="hint">Illustrative, full period, periodic proration.</div>`;
+  }
+  function bind() {
+    $$('[data-p]').forEach(el => {
+      const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(ev, () => {
+        const k = el.dataset.p; p[k] = el.type === 'checkbox' ? el.checked : (k === 'terms_days' ? +el.value : (k === 'code' ? el.value.toUpperCase().replace(/\s+/g, '') : el.value));
+        if (['frequency'].includes(k)) feeCheck();
+      });
+    });
+    $('#stype').onchange = e => {
+      p.schedule.type = e.target.value;
+      if ((p.schedule.type === 'tiered' || p.schedule.type === 'breakpoint') && !(p.schedule.tiers || []).length) p.schedule.tiers = [{ upTo: 1000000, bps: 50 }, { upTo: null, bps: 35 }];
+      draw();
+    };
+    $$('[data-t]').forEach(el => el.addEventListener('input', () => { p.schedule.tiers[+el.dataset.t][el.dataset.tf] = C.num(el.value); feeCheck(); }));
+    $$('[data-s]').forEach(el => el.addEventListener('input', () => { p.schedule[el.dataset.s] = el.value === '' ? '' : C.num(el.value); feeCheck(); }));
+    $$('[data-deltier]').forEach(b => b.onclick = () => { p.schedule.tiers.splice(+b.dataset.deltier, 1); if (p.schedule.tiers.length) p.schedule.tiers[p.schedule.tiers.length - 1].upTo = null; draw(); });
+    const at = $('#addtier'); if (at) at.onclick = () => {
+      const t = p.schedule.tiers; const last = t[t.length - 1];
+      const prevCap = t.length > 1 ? C.num(t[t.length - 2].upTo) : 0;
+      if (last) last.upTo = prevCap ? prevCap * 2 : 1000000;
+      t.push({ upTo: null, bps: last ? last.bps : 25 }); draw();
+    };
+    $('#sa').addEventListener('input', e => { sample = C.num(e.target.value); feeCheck(); });
+    $('#sp').addEventListener('input', e => { sampleP = C.num(e.target.value); feeCheck(); });
+    $('#savep').onclick = async () => {
+      if (!p.name.trim() || !p.code.trim() || !p.sponsor_name.trim()) return toast('Plan name, code and sponsor are required', true);
+      const s = p.schedule;
+      if (s.type === 'tiered' || s.type === 'breakpoint') {
+        if (!s.tiers.length) return toast('Add at least one tier', true);
+        const caps = s.tiers.slice(0, -1).map(t => C.num(t.upTo));
+        if (caps.some((c, i) => c <= 0 || (i && c <= caps[i - 1]))) return toast('Tier caps must be positive and increasing', true);
+        s.tiers = s.tiers.map((t, i, a) => ({ upTo: i === a.length - 1 ? null : C.num(t.upTo), bps: C.num(t.bps) }));
+      }
+      try { const saved = await DB.savePlan(p); toast('Plan saved'); S.loaded = false; await refresh(); location.hash = '#/plan/' + saved.id; if (!isNew) viewPlan(saved.id); }
+      catch (e) { toast(e.code === '23505' ? `Plan code "${p.code}" is already used.` : (e.message || String(e)), true); }
+    };
+  }
+  draw();
+}
+
+/* =========================================================================
+   VIEW: SETTINGS
+   ========================================================================= */
+async function viewSettings() {
+  await refresh();
+  const s = deep(S.settings);
+  main(`
+    <h1>Settings</h1><p class="sub">Letterhead and standard language on every invoice and statement</p>
+    <div class="split">
+      <div class="card">
+        <div class="grid g2">
+          <label class="f">Firm name<input type="text" data-k="firmName" value="${esc(s.firmName)}"></label>
+          <label class="f">Logo URL (optional)<input type="text" data-k="logoUrl" value="${esc(s.logoUrl)}" placeholder="https://…/logo.png"></label>
+          <label class="f">Phone<input type="text" data-k="phone" value="${esc(s.phone)}"></label>
+          <label class="f">Email<input type="text" data-k="email" value="${esc(s.email)}"></label>
+          <label class="f" style="grid-column:1/-1">Address<textarea data-k="address" rows="2">${esc(s.address)}</textarea></label>
+          <label class="f" style="grid-column:1/-1">Remittance instructions (invoices)<textarea data-k="remit" rows="3">${esc(s.remit)}</textarea></label>
+          <label class="f" style="grid-column:1/-1">Note on fee statements (deduct from plan)<textarea data-k="deductNote" rows="2">${esc(s.deductNote)}</textarea></label>
+          <label class="f" style="grid-column:1/-1">Disclosure footer<textarea data-k="disclosure" rows="4">${esc(s.disclosure)}</textarea></label>
+        </div>
+        <div class="row" style="margin-top:14px"><button class="btn primary" id="saves">Save settings</button><button class="btn" id="backup">Download backup (JSON)</button></div>
+        <div class="hint">Settings changes apply to how every invoice prints, including past ones. Figures on past invoices never change.</div>
+      </div>
+      <div class="previewbox" id="spreview"></div>
+    </div>`);
+  const sampleInv = () => {
+    const plan = S.plans[0] || { ...BLANK_PLAN(), name: 'Sample Company 401(k) Plan', sponsor_name: 'Sample Company, Inc.', contact_address: '100 Main St\nIrvine, CA 92618' };
+    const per = C.periodsFor('quarterly', new Date().getFullYear())[0];
+    const calc = C.calculate(plan, { periodStart: per.start, periodEnd: per.end, values: [{ label: `Value as of ${fmtDate(per.end)}`, value: 5000000 }], participants: 100 });
+    return { invoice_number: 'SAMPLE', status: 'approved', invoice_date: todayISO(), due_date: addDays(todayISO(), 30), period_label: per.label, period_start: per.start, period_end: per.end, plan_snapshot: planSnapshot(plan), calc };
+  };
+  const pv = () => { $('#spreview').innerHTML = renderDoc(sampleInv(), s); };
+  $$('[data-k]').forEach(el => el.addEventListener('input', () => { s[el.dataset.k] = el.value; pv(); }));
+  $('#saves').onclick = async () => { try { await DB.saveSettings(s); S.settings = s; toast('Settings saved'); } catch (e) { toast(e.message, true); } };
+  $('#backup').onclick = () => download(`plan-billing-backup-${todayISO()}.json`, JSON.stringify({ exported_at: new Date().toISOString(), plans: S.plans, invoices: S.invoices.map(i => { const x = { ...i }; delete x.plan; return x; }), settings: S.settings }, null, 2), 'application/json');
+  pv();
+}
+
+/* =========================================================================
+   AUTH + BOOT
+   ========================================================================= */
+function loginScreen(msg) {
+  $('#app').innerHTML = `<div class="login">
+    <h1>Plan Billing</h1><p class="sub">Sign in with your Redmount login</p>
+    ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+    <form id="lf" class="grid">
+      <label class="f">Email<input type="email" id="le" autocomplete="username" required></label>
+      <label class="f">Password<input type="password" id="lp" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Sign in</button>
+    </form>
+    <p class="small muted" style="margin-top:14px">Already signed in to the <a href="${esc(CONFIG.TERMINAL_URL)}">Redmount Terminal</a>? Open Plan Billing from there.</p></div>`;
+  $('#lf').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email: $('#le').value.trim(), password: $('#lp').value });
+    if (error) return loginScreen(error.message);
+    boot();
+  };
+}
+
+async function boot() {
+  if (LOCAL) { DB.user = { email: 'local test mode' }; }
+  else {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return loginScreen();
+    DB.user = session.user;
+  }
+  shell();
+  window.removeEventListener('hashchange', route);
+  window.addEventListener('hashchange', route);
+  try { await route(); }
+  catch (e) {
+    const m = String(e.message || e);
+    main(`<div class="err">${esc(m)}</div>${/relation|does not exist|schema cache/i.test(m) ? '<div class="card">The billing tables aren’t in Supabase yet. Run <span class="mono">schema.sql</span> in the Supabase SQL Editor, then reload.</div>' : ''}`);
+  }
+}
+
+window.__billing = { C, DB, renderDoc }; // for debugging in the console
+boot();
+})();
+</script>
+</body>
+</html>
